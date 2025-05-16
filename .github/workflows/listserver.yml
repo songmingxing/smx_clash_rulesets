@@ -1,0 +1,110 @@
+# 文件名: .github/workflows/sync_yaml.yml
+name: Download Modify and Sync YAML
+
+# 工作流触发器
+on:
+  workflow_dispatch: # 允许手动从 Actions 标签页触发
+  schedule:
+    - cron: '0 2 * * *' # 示例：每天凌晨2点 (UTC) 自动执行，请根据需要调整
+
+# 环境变量，方便统一配置和修改
+env:
+  # --- 用户配置开始 ---
+  LINK_URL: "https://sub.maoxiongnet.com/sub?target=clash&udp=true&filename=maoxiong&interval=86400&append_info&url=https://gbshct.spphhnhg.top/link/tak87DAKxPiy0Mqp?clash=1&extend=1"               # 替换为你的 YAML 文件下载链接
+  ORIGINAL_FILENAME: "maoxiong_OR.yaml"     # 下载的原始文件名 (在 runner 上的临时文件名)
+  NEW_FILENAME: "maoxiongserver.txt"              # awk 处理后生成的新文件名
+                                                    # 如果需要在目标仓库的子目录中，可以设置为例如 "subfolder/config.txt"
+  TARGET_REPO: "songmingxing/smx_clash_rulesets"                       # 替换为目标仓库，格式：OWNER/REPO_NAME
+  TARGET_BRANCH: "main"                             # 推送到目标仓库的分支
+  COMMIT_MESSAGE: "自动化更新: 同步Server数据为DOMAIN,Server格式" # Git 提交信息
+  GIT_USER_NAME: "songmingxing"                # Git 提交者名称
+  GIT_USER_EMAIL: "isusaok@gmail.com"              # Git 提交者邮箱 (或者自定义的机器人邮箱)
+
+  # ！！！关键：定义你的 AWK 命令 ！！！
+  # 下面的 AWK 命令会提取每行中的 server:VALUE，并输出为 DOMAIN,VALUE
+  # server 的值匹配到逗号、右花括号或空格前
+  # 只有当一行包含有效的 server 值时，才会输出。
+  AWK_COMMAND: '{ server_addr = ""; if (match($0, /server:[[:space:]]*([^,}\s]+)/, arr_s)) { server_addr = arr_s[1]; if (server_addr != "") { print "DOMAIN," server_addr; } } }'
+  # --- 用户配置结束 ---
+
+jobs:
+  download_modify_and_sync:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 虚拟机环境
+    steps:
+      # 步骤1: (可选) Checkout 当前仓库
+      # - name: Checkout current repository
+      #   uses: actions/checkout@v4
+
+      # 步骤2: 下载 YAML/文本 文件
+      - name: Download source file
+        run: |
+          echo "正在从 ${{ env.LINK_URL }} 下载源文件..."
+          curl -L -A "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0" -o "${{ env.ORIGINAL_FILENAME }}" "${{ env.LINK_URL }}"
+          if [ ! -s "${{ env.ORIGINAL_FILENAME }}" ]; then
+            echo "错误：下载的文件为空或下载失败。请检查 LINK_URL。"
+            exit 1
+          fi
+          echo "文件已下载并保存为 ${{ env.ORIGINAL_FILENAME }}"
+
+      # 步骤3: 使用 awk 修改文件内容
+      - name: Process file using awk
+        run: |
+          echo "正在使用 awk 命令处理 ${{ env.ORIGINAL_FILENAME }}，生成 ${{ env.NEW_FILENAME }}"
+          if [ -z "${{ env.AWK_COMMAND }}" ] || [ "${{ env.AWK_COMMAND }}" == "YOUR_AWK_SCRIPT_HERE" ]; then # 检查是否还是占位符
+            echo "错误：AWK_COMMAND 未正确设置。请在 workflow 文件中配置 AWK_COMMAND。"
+            exit 1
+          fi
+          awk "${{ env.AWK_COMMAND }}" "${{ env.ORIGINAL_FILENAME }}" > "${{ env.NEW_FILENAME }}"
+          if [ ! -s "${{ env.NEW_FILENAME }}" ]; then
+            echo "警告：生成的输出文件 ${{ env.NEW_FILENAME }} 为空。请检查您的 awk 命令、输入文件 '${{ env.ORIGINAL_FILENAME }}' 的内容以及 LINK_URL 是否有效且包含预期的 server 行。"
+            # 根据您的需求，如果生成空文件是错误情况，可以在这里添加 exit 1
+          fi
+          echo "已生成 ${{ env.NEW_FILENAME }}。内容预览 (前20行):"
+          head -n 20 "${{ env.NEW_FILENAME }}" || true # 使用 true 避免在文件行数少于20时出错
+
+      # 步骤4: Checkout 目标仓库
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}         # 要克隆的目标仓库
+          token: ${{ secrets.TARGET_REPO_PAT }}       # 用于认证的 PAT，需要预先在仓库 Secrets 中设置
+          path: './target_repo_checkout'              # 克隆到指定子目录
+          ref: ${{ env.TARGET_BRANCH }}               # Checkout 目标仓库的指定分支
+
+      # 步骤5: 将修改后的文件复制到目标仓库的 checkout 目录，然后提交并推送
+      - name: Commit and Push to target repository
+        run: |
+          TARGET_CHECKOUT_DIR="./target_repo_checkout"
+          TARGET_FILE_IN_REPO="${{ env.NEW_FILENAME }}"
+
+          echo "准备将生成的文件 '${{ env.NEW_FILENAME }}' 移动到目标仓库的路径 '$TARGET_CHECKOUT_DIR/$TARGET_FILE_IN_REPO'"
+
+          TARGET_FILE_SUBDIR_IN_REPO=$(dirname "$TARGET_FILE_IN_REPO")
+          if [ "$TARGET_FILE_SUBDIR_IN_REPO" != "." ] && [ ! -d "$TARGET_CHECKOUT_DIR/$TARGET_FILE_SUBDIR_IN_REPO" ]; then
+            echo "在目标仓库 checkout 目录中创建子目录: $TARGET_CHECKOUT_DIR/$TARGET_FILE_SUBDIR_IN_REPO"
+            mkdir -p "$TARGET_CHECKOUT_DIR/$TARGET_FILE_SUBDIR_IN_REPO"
+          fi
+
+          cp "${{ env.NEW_FILENAME }}" "$TARGET_CHECKOUT_DIR/$TARGET_FILE_IN_REPO"
+          echo "文件已复制到 $TARGET_CHECKOUT_DIR/$TARGET_FILE_IN_REPO"
+
+          cd "$TARGET_CHECKOUT_DIR"
+
+          echo "配置 Git 用户..."
+          git config user.name "${{ env.GIT_USER_NAME }}"
+          git config user.email "${{ env.GIT_USER_EMAIL }}"
+
+          echo "将更改添加到暂存区..."
+          git add "$TARGET_FILE_IN_REPO"
+
+          if git diff --staged --quiet; then
+            echo "文件内容没有变化，无需提交到目标仓库。"
+          else
+            echo "检测到文件更改，正在提交..."
+            git commit -m "${{ env.COMMIT_MESSAGE }}"
+            echo "正在推送到仓库 '${{ env.TARGET_REPO }}' 的分支 '${{ env.TARGET_BRANCH }}'..."
+            git push origin HEAD:${{ env.TARGET_BRANCH }}
+            echo "更改已成功推送到目标仓库。"
+          fi
+        env:
+          _NOTE_: "请确保名为 TARGET_REPO_PAT 的 Secret 已在运行此 Action 的仓库中正确设置。"
