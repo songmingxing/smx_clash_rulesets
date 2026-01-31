@@ -6,6 +6,7 @@ DOMAIN-SUFFIX,crashlytics.com
 DOMAIN-SUFFIX,inmobi.com
 DOMAIN-SUFFIX,inner-active.mobi
 DOMAIN-SUFFIX,ip-api.com
+DOMAIN-SUFFIX,ssp.api.tappx.com
 DOMAIN-SUFFIX,kochava.com
 DOMAIN-SUFFIX,mobilefuse.com
 DOMAIN-SUFFIX,talkatone.com
