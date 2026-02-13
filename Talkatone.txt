@@ -1,5 +1,13 @@
 #2025-5-01
 #Talkatone 直连规则集 Maybe OK
+
+DOMAIN,aax.amazon-adsystem.com
+DOMAIN,pubads.g.doubleclick.net
+DOMAIN,c.amazon-adsystem.com
+DOMAIN,ext.track.tappx.com
+DOMAIN,ow.pubmatic.com
+DOMAIN-SUFFIX,aps.axp.amazon-adsystem.com
+
 DOMAIN-SUFFIX,agkn.com
 DOMAIN-SUFFIX,cohere.com
 DOMAIN-SUFFIX,crashlytics.com
