@@ -8,6 +8,10 @@ DOMAIN,ext.track.tappx.com
 DOMAIN,ow.pubmatic.com
 DOMAIN-SUFFIX,aps.axp.amazon-adsystem.com
 DOMAIN-SUFFIX,pubmatic.com
+DOMAIN-SUFFIX,inmobicdn.net
+DOMAIN-SUFFIX,inmobi.com
+DOMAIN-SUFFIX,appsflyer.com
+DOMAIN-SUFFIX,smadex.com
 
 DOMAIN-SUFFIX,agkn.com
 DOMAIN-SUFFIX,cohere.com
