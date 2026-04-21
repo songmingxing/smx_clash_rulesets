@@ -10,4 +10,8 @@ DOMAIN-SUFFIX,xhscdn.net
 DOMAIN-SUFFIX,xiaohongshu.com
 DOMAIN-SUFFIX,rednotecdn.com
 DOMAIN-SUFFIX,rednote.com
+DOMAIN-SUFFIX,rnote.com
+DOMAIN-SUFFIX,rnotecdn.com
+
+
 
